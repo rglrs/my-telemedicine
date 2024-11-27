@@ -6,15 +6,27 @@ import "@/app/globals.css";
 
 export default function Appointments() {
   const [appointments, setAppointments] = useState([]);
+  const [doctors, setDoctors] = useState([]);
+  const [form, setForm] = useState({ doctorId: '', date: '', status: 'pending' });
   const [error, setError] = useState('');
   const router = useRouter();
-  const userData = typeof window !== "undefined" && JSON.parse(localStorage.getItem('user'));
+  const [userData, setUserData] = useState(null);
 
   useEffect(() => {
-    if (!userData) {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      setUserData(JSON.parse(storedUser));
+    } else {
       router.push('/login');
-      return;
     }
+  }, [router]);
+
+  useEffect(() => {
+    if (!userData) return;
+
+    const fetchData = async () => {
+      await Promise.all([fetchAppointments(), fetchDoctors()]);
+    };
 
     const fetchAppointments = async () => {
       try {
@@ -26,8 +38,67 @@ export default function Appointments() {
       }
     };
 
+    const fetchDoctors = async () => {
+      try {
+        const response = await fetch('/api/doctors', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        if (!response.ok) throw new Error('Failed to fetch doctors');
+        const data = await response.json();
+        setDoctors(data.doctors || []);
+      } catch (error) {
+        setError('Failed to fetch doctors');
+        console.error(error);
+      }
+    };
+
     fetchAppointments();
-  }, [userData, router]);
+    fetchDoctors();
+    fetchData();
+  }, [userData]);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setForm({ ...form, [name]: value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!userData) {
+      setError('User not logged in.');
+      return;
+    }
+  
+    try {
+      const response = await fetch('/api/appointments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'userid': userData.id
+        },
+        body: JSON.stringify({
+          doctorId: parseInt(form.doctorId), // Ensure doctorId is a number
+          date: form.date
+        })
+      });
+  
+      if (response.ok) {
+        const data = await response.json();
+        setAppointments([...appointments, data.appointment]);
+        setForm({ doctorId: '', date: '', status: 'pending' });
+        setError(''); // Clear any existing errors
+      } else {
+        const errorData = await response.json();
+        setError(errorData.message || 'Failed to create appointment.');
+      }
+    } catch (error) {
+      setError('Failed to create appointment. Please try again.');
+      console.error(error);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('user');
@@ -47,7 +118,7 @@ export default function Appointments() {
               <div className="w-full border-t border-gray-300"></div>
             </div>
           </div>
-          <div className="mt-8 space-y-6 text-black">  {/* Perubahan warna teks */}
+          <div className="mt-8 space-y-6 text-black">
             <h3 className="text-xl mb-4">Your Upcoming Appointments</h3>
             <ul>
               {appointments.length > 0 ? (
@@ -61,16 +132,50 @@ export default function Appointments() {
               )}
             </ul>
             {error && <p className="text-red-500 mt-4">{error}</p>}
-            <div className="text-center">
+            <form onSubmit={handleSubmit} className="space-y-4 mt-8">
+              <div>
+                <label htmlFor="doctorId" className="block text-sm font-medium text-gray-700">Doctor</label>
+                <select
+                  id="doctorId"
+                  name="doctorId"
+                  required
+                  value={form.doctorId}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                >
+                  <option value="">Select a Doctor</option>
+                  {doctors.map((doctor) => (
+                    <option key={doctor.id} value={doctor.id}>
+                      {doctor.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="date" className="block text-sm font-medium text-gray-700">Date</label>
+                <input
+                  id="date"
+                  name="date"
+                  type="datetime-local"
+                  required
+                  value={form.date}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <button type="submit" className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                  Create Appointment
+                </button>
+              </div>
+            </form>
+            <div className="text-center mt-8">
               <button onClick={handleLogout} className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                 Logout
               </button>
             </div>
           </div>
         </div>
-      </div>
-      <div className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
-        <img src="/images/illustration.png" alt="Illustration" className="max-w-md" />
       </div>
     </div>
   );

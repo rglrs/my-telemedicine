@@ -9,11 +9,13 @@ export default function Login() {
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false); // Tambahkan state untuk admin login
   const router = useRouter(); // Gunakan useRouter untuk navigasi
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    const response = await fetch('/api/auth/login', {
+    const endpoint = isAdmin ? '/api/auth/adminLogin' : '/api/auth/login';
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -29,6 +31,9 @@ export default function Login() {
       } else if (data.doctor) {
         localStorage.setItem('doctor', JSON.stringify(data.doctor));
         router.push('/doctor/dashboard');
+      } else if (data.admin) {
+        localStorage.setItem('admin', JSON.stringify(data.admin));
+        router.push('/admin/doctors');
       }
       setError('');
     } else {
@@ -98,6 +103,19 @@ export default function Login() {
                   Forgot password?
                 </a>
               </div>
+            </div>
+            <div className="flex items-center">
+              <input
+                id="admin-login"
+                name="admin-login"
+                type="checkbox"
+                checked={isAdmin}
+                onChange={(e) => setIsAdmin(e.target.checked)}
+                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+              />
+              <label htmlFor="admin-login" className="ml-2 block text-sm text-gray-900">
+                Admin Login
+              </label>
             </div>
             {error && <p className="text-red-500 text-sm">{error}</p>}
             <div>

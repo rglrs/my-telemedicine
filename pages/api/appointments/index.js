@@ -12,13 +12,44 @@ export default async (req, res) => {
         return res.status(400).json({ message: 'User ID is required' });
       }
 
+      // First verify the doctor exists in the Doctors table
+      const doctor = await Doctor.findOne({
+        where: { id: doctorId }
+      });
+
+      if (!doctor) {
+        return res.status(404).json({ message: 'Doctor not found' });
+      }
+
+      // Create appointment with verified doctor
       const newAppointment = await Appointment.create({
         patientId: userId,
-        doctorId,
+        doctorId: doctor.id, // Use the verified doctor's ID
         date,
-        status: 'pending',
+        status: 'pending'
       });
-      res.status(201).json({ message: 'Appointment created successfully', appointment: newAppointment });
+
+      // Return with more detailed response
+      const appointmentWithDetails = await Appointment.findOne({
+        where: { id: newAppointment.id },
+        include: [
+          { 
+            model: Doctor,
+            attributes: ['id', 'name'],
+            include: [{ model: User, attributes: ['name'] }]
+          },
+          { 
+            model: User, 
+            as: 'Patient', 
+            attributes: ['name'] 
+          }
+        ]
+      });
+
+      res.status(201).json({
+        message: 'Appointment created successfully',
+        appointment: appointmentWithDetails
+      });
     } else if (req.method === 'GET') {
       const { doctorId } = req.query;
 

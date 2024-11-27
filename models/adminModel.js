@@ -1,8 +1,7 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../utils/db');
-const User = require('./userModel');
 
-const Doctor = sequelize.define('Doctor', {
+const Admin = sequelize.define('Admin', {
   id: {
     type: DataTypes.INTEGER,
     autoIncrement: true,
@@ -11,23 +10,11 @@ const Doctor = sequelize.define('Doctor', {
   name: {
     type: DataTypes.STRING,
     allowNull: false,
+    unique: true,
   },
   password: {
     type: DataTypes.STRING,
     allowNull: false,
-  },
-  // Ubah tipe data schedule menjadi STRING
-  schedule: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-  userId: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    references: {
-      model: User,
-      key: 'id',
-    },
   },
   createdAt: {
     type: DataTypes.DATE,
@@ -39,9 +26,8 @@ const Doctor = sequelize.define('Doctor', {
     allowNull: false,
     defaultValue: DataTypes.NOW,
   },
+}, {
+  tableName: 'Admin'  // Tentukan nama tabel di sini
 });
 
-Doctor.belongsTo(User, { foreignKey: 'userId' });
-User.hasOne(Doctor, { foreignKey: 'userId' });
-
-module.exports = Doctor;
+module.exports = Admin;
